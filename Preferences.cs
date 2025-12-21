@@ -17,9 +17,12 @@ namespace SimpleHealthBar
             Preferences.FadeDelay = Preferences.AnimationCategory.CreateEntry<float>("FadeDelay", 5f, "Fade Out Delay", "The amount of time in seconds it takes for the bar and text to disappear", false, false, null, null);
             Preferences.FadeSpeed = Preferences.AnimationCategory.CreateEntry<float>("FadeSpeed", 2f, "Fade Speed", "Manages the speed of the fade transition");
             Preferences.NPCHealthBar = MelonPreferences.CreateCategory("SimpleHealthBar_NPCHealthBar", "NPC Health Bar");
-            Preferences.NPCHealthBarEnabled = Preferences.NPCHealthBar.CreateEntry<bool>("NPCBarEnabled", true, "NPC Health Bar Enabled", "Enables the health bar for the nearest NPC", false, false, null, null);
-            Preferences.FadeOutNPCBar = Preferences.NPCHealthBar.CreateEntry<bool>("FadeOutNPCBar", true, "Fade out NPC Health Bar", "Enables fading out the health bar for the nearest NPC", false, false, null, null);
+            Preferences.NPCHealthBarEnabled = Preferences.NPCHealthBar.CreateEntry<bool>("NPCBarEnabled", true, "NPC Health Bar Enabled", "Enables the health bar for NPCs", false, false, null, null);
+            Preferences.FadeOutNPCBar = Preferences.NPCHealthBar.CreateEntry<bool>("FadeOutNPCBar", true, "Fade out NPC Health Bar", "Enables fading out the health bar for NPCs", false, false, null, null);
             Preferences.NPCFadeOutDistance = Preferences.NPCHealthBar.CreateEntry<float>("NPCFadeOutDistance", 100f, "Distance from Player to Fade Out Bar", "Sets the distance from the player the NPC health bar should fade out", false, false, null, null);
+            Preferences.NPCWorldSpaceRadius = Preferences.NPCHealthBar.CreateEntry<float>("NPCWorldSpaceRadius", 50f, "NPC Health Bar Display Radius", "Maximum distance from player to display NPC health bars (in meters)", false, false, null, null);
+            Preferences.NPCHeadOffset = Preferences.NPCHealthBar.CreateEntry<float>("NPCHeadOffset", 2f, "NPC Head Offset", "Vertical offset above NPC transform for health bar position (in meters)", false, false, null, null);
+            Preferences.NPCHealthBarScale = Preferences.NPCHealthBar.CreateEntry<float>("NPCHealthBarScale", 1.0f, "NPC Health Bar Scale", "Multiplier for NPC health bar size (base scale: 0.005). Use simple values like 0.5, 1.0, 1.5, etc. Higher values = larger healthbars", false, false, null, null);
             //Debug preferences
             Preferences.EnableDebugLogging = Preferences.DebugCategory.CreateEntry<bool>("EnableDebugLogging", false, "Enable Debug Logging", "Enables detailed debug logging for troubleshooting", false, false, null, null);
         }
@@ -36,6 +39,9 @@ namespace SimpleHealthBar
         public static MelonPreferences_Entry<bool> NPCHealthBarEnabled;
         public static MelonPreferences_Entry<bool> FadeOutNPCBar;
         public static MelonPreferences_Entry<float> NPCFadeOutDistance;
+        public static MelonPreferences_Entry<float> NPCWorldSpaceRadius;
+        public static MelonPreferences_Entry<float> NPCHeadOffset;
+        public static MelonPreferences_Entry<float> NPCHealthBarScale;
         public static MelonPreferences_Category DebugCategory;
         public static MelonPreferences_Entry<bool> EnableDebugLogging;
     }
