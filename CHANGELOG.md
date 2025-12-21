@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.0
+- **Major NPC Healthbar Overhaul**
+  - Migrated NPC healthbars from screen-space HUD to world-space UI elements positioned above each NPC's head
+  - Added support for displaying multiple NPC healthbars simultaneously (all NPCs within configurable radius)
+  - Implemented billboard behavior so healthbars always face the camera
+  - Added automatic fade in/out based on NPC state (fades out when NPC is dead, knocked out, or in a building)
+  - New configuration options:
+    - `NPCWorldSpaceRadius`: Maximum distance to display NPC healthbars (default: 50m)
+    - `NPCHeadOffset`: Vertical offset above NPC for healthbar position (default: 2m)
+    - `NPCHealthBarScale`: Multiplier for NPC health bar size (base scale: 0.005, default: 1.0). Use simple values like 0.5, 1.0, 1.5, etc.
+  - Improved performance with distance-based filtering using squared distance calculations
+  - Enhanced lifecycle management for automatic cleanup when NPCs leave range or are destroyed
+
 ## 1.4.0
 - Cartel Update
 - Refactored health bar system and introduced a unified HealthBar class for improved functionality and maintainability

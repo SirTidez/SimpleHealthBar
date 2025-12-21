@@ -1,8 +1,8 @@
 ﻿<Project>
     <PropertyGroup>
         <!-- Paths and conditions -->
-        <S1MonoDir>D:\Schedule 1 Modding\Schedule I_alternate-beta</S1MonoDir>
-        <S1CPPDir>D:\Schedule 1 Modding\Schedule I_beta</S1CPPDir>
+        <S1MonoDir>C:\Program Files (x86)\Steam\steamapps\common\Schedule I</S1MonoDir>
+        <S1CPPDir>D:\Schedule 1 Modding\Dev Env\tests\branches\beta-branch\manifest_7281814730161880899</S1CPPDir>
         <CommonDir>D:\Schedule 1 Modding</CommonDir>
         <ModManagerDir>D:\Schedule 1 Modding\Mod Manager</ModManagerDir>
         <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>

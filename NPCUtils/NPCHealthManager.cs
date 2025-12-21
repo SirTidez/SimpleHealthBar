@@ -1,12 +1,11 @@
 ﻿#if MONO
 using ScheduleOne.PlayerScripts;
-using ScheduleOne.UI;
 using ScheduleOne.NPCs;
 #else
 using Il2CppScheduleOne.NPCs;
 using Il2CppScheduleOne.PlayerScripts;
-using Il2CppScheduleOne.UI;
 #endif
+using System.Collections.Generic;
 using MelonLoader;
 using SimpleHealthBar.Helpers;
 using SimpleHealthBar.UI;
@@ -17,13 +16,11 @@ namespace SimpleHealthBar.NPCUtils
     public static class NPCHealthManager
     {
         private static NPCManager NPCManager;
-        private static HealthBar HealthBar;
-        private static NPC CurrentNPC;
+        private static Dictionary<NPC, WorldSpaceHealthBar> HealthBars;
         private static bool IsInitialized = false;
-        private static bool IsOutOfSight = true;
 
         /// <summary>
-        /// Initializes the NPC healthbar manager, setting up the logger and creating the healthbar for the nearest NPC if the NPCManager is available.
+        /// Initializes the NPC healthbar manager, setting up the logger and preparing for world-space healthbars.
         /// </summary>
         /// <param name="logger">The logger instance to use for output.</param>
         public static void Init(MelonLogger.Instance logger)
@@ -32,184 +29,157 @@ namespace SimpleHealthBar.NPCUtils
             if (IsInitialized)
             {
                 NPCManager = NPCManager.Instance;
-#if MONO
-                HealthBar = new HealthBar(HealthBarType.NPC, HUD.instance.transform);
-#else
-                HealthBar = new HealthBar(HealthBarType.NPC, HUD.Instance.transform);
-#endif
-                ModLogger.Info("NPC Healthbar Initialized!");
+                HealthBars = new Dictionary<NPC, WorldSpaceHealthBar>();
+                ModLogger.Info("NPC Healthbar Manager Initialized!");
             }
             else
                 ModLogger.Error("NPCManager not found, aborting NPC health reporting!");
         }
 
         /// <summary>
-        /// Handles logic when an NPC is selected, updating and showing the healthbar if the selected NPC changes or its health changes.
+        /// Gets the squared distance from the player to an NPC.
         /// </summary>
-        /// <param name="npc">The NPC that has been selected.</param>
-        public static void OnNPCSelected(NPC npc)
+        /// <param name="npc">The NPC to measure distance to.</param>
+        /// <returns>The squared distance, or float.MaxValue if invalid.</returns>
+        private static float GetSquaredDistanceFromPlayer(NPC npc)
         {
-            if (IsInitialized && npc != null && HealthBar != null)
-            {
-                // Check if NPC has required components (S1API custom NPCs might not have all components)
-                if (npc.Health == null)
-                    return;
-                    
-                if (CurrentNPC != npc)
-                {
-                    CurrentNPC = npc;
-                    HealthBar.UpdateText(npc.fullName);
-                    HealthBar.Show();
-                }
-                else
-                {
-                    if (HealthBar.GetCurrentHealth() != npc.Health.Health)
-                    {
-                        HealthBar.UpdateText(npc.fullName);
-                        HealthBar.Show();
-                    }
-                }
-            }
-        }
-
-        private static float GetDistanceFromPlayer()
-        {
-            if (CurrentNPC == null || Player.Local == null) return float.MaxValue;
-            
-            // Check if NPC has required components (S1API custom NPCs might not have all components)
-            if (CurrentNPC.Movement == null || CurrentNPC.Health == null)
+            if (npc == null || Player.Local == null)
                 return float.MaxValue;
-            
+
+            // Check if NPC has required components (S1API custom NPCs might not have all components)
+            if (npc.Movement == null || npc.Health == null)
+                return float.MaxValue;
+
+            Vector3 npcPosition;
 #if MONO
             // Mono workaround - exclusively use transform position to avoid MissingMethodException
-            Vector3 npcPosition = CurrentNPC.transform.position;
+            npcPosition = npc.transform.position;
 #else
             // IL2CPP - use the standard approach
-            Vector3 npcPosition = CurrentNPC.Movement.FootPosition;
+            npcPosition = npc.Movement.FootPosition;
 #endif
-            
+
             return (npcPosition - Player.Local.CameraPosition).sqrMagnitude;
         }
 
-        private static bool CheckDistanceFromPlayer()
-        {
-            bool check = GetDistanceFromPlayer() < Preferences.NPCFadeOutDistance.Value;
-            if (!check && !IsOutOfSight)
-                IsOutOfSight = true;
-            else if (check && IsOutOfSight)
-            {
-                IsOutOfSight = false;
-            }
-            return check;
-        }
-
-        private static bool CheckDistanceChanged()
-        {
-            bool check = GetDistanceFromPlayer() < Preferences.NPCFadeOutDistance.Value;
-            if (check && IsOutOfSight)
-                return true;
-            return false;
-        }
-
-        /*
-         * Returns the NPC that is closest in distance to the player
-         */
         /// <summary>
-        /// Returns the NPC that is closest in distance to the player.
+        /// Updates all NPC healthbars each frame, creating new ones for NPCs within range and removing ones outside range.
         /// </summary>
-        /// <returns>The closest NPC instance, or null if none are found.</returns>
-        public static NPC GetClosestNPC()
+        public static void OnUpdate()
         {
-            NPC closestNPC = null;
-            float closestDist = float.MaxValue;
-            
-            foreach(NPC npc in NPCManager.NPCRegistry)
+            if (!IsInitialized || HealthBars == null || NPCManager == null)
+                return;
+
+            if (!Preferences.NPCHealthBarEnabled.Value)
             {
-                if (npc == null) continue;
-                
-                // Check if NPC has required components (S1API custom NPCs might not have all components)
-                if (npc.Movement == null || npc.Health == null) continue;
-                
-                float sqrDist;
-#if MONO
-                // Mono workaround - exclusively use transform position to avoid MissingMethodException
-                Vector3 npcPosition = npc.transform.position;
-#else
-                // IL2CPP - use the standard approach
-                Vector3 npcPosition = npc.Movement.FootPosition;
-#endif
-                
-                if (Player.Local != null)
+                // If disabled, destroy all healthbars
+                CleanupAllHealthbars();
+                return;
+            }
+
+            float radiusSquared = Preferences.NPCWorldSpaceRadius.Value;
+            radiusSquared *= radiusSquared; // Square the radius for comparison
+
+            // Track NPCs that should have healthbars
+            HashSet<NPC> npcsInRange = new HashSet<NPC>();
+
+            // Process all NPCs in registry
+            foreach (NPC npc in NPCManager.NPCRegistry)
+            {
+                if (npc == null)
+                    continue;
+
+                // Check if NPC has required components
+                if (npc.Health == null || npc.transform == null)
+                    continue;
+
+                // Check distance
+                float sqrDist = GetSquaredDistanceFromPlayer(npc);
+                if (sqrDist <= radiusSquared)
                 {
-                    sqrDist = (npcPosition - Player.Local.CameraPosition).sqrMagnitude;
-                    if(sqrDist < closestDist)
+                    npcsInRange.Add(npc);
+
+                    // Create healthbar if it doesn't exist
+                    if (!HealthBars.ContainsKey(npc))
                     {
-                        closestDist = sqrDist;
-                        closestNPC = npc;
+                        try
+                        {
+                            WorldSpaceHealthBar healthBar = new WorldSpaceHealthBar(npc);
+                            HealthBars[npc] = healthBar;
+                            ModLogger.Debug($"Created health bar for {npc.fullName}");
+                        }
+                        catch (System.Exception ex)
+                        {
+                            ModLogger.Error($"Failed to create health bar for {npc.fullName}: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        // Update existing healthbar
+                        WorldSpaceHealthBar healthBar = HealthBars[npc];
+                        if (healthBar != null && healthBar.IsValid())
+                        {
+                            healthBar.Update();
+                        }
+                        else
+                        {
+                            // Healthbar is invalid, remove it
+                            HealthBars.Remove(npc);
+                            if (healthBar != null)
+                                healthBar.Destroy();
+                        }
                     }
                 }
             }
 
-            return closestNPC;
-        }
-
-
-
-        /// <summary>
-        /// Updates the NPC healthbar each frame, ensuring it tracks the closest NPC and updates when health or distance changes.
-        /// </summary>
-        public static void OnUpdate()
-        {
-            if (!IsInitialized)
-                return;
-                
-            NPC closestNPC = GetClosestNPC();
-            
-            if (closestNPC != null && CurrentNPC != closestNPC)
+            // Remove healthbars for NPCs that are no longer in range or have been destroyed
+            List<NPC> toRemove = new List<NPC>();
+            foreach (var kvp in HealthBars)
             {
-                // Check if NPC has required components (S1API custom NPCs might not have all components)
-                if (closestNPC.Health == null)
-                    return;
-                    
-                CurrentNPC = closestNPC;
-                float npcHealth = CurrentNPC.Health.Health;
-                ModLogger.Debug($"NPC changed to {closestNPC.fullName} with health {npcHealth}");
-                HealthBar.SetCurrentHealth(npcHealth);
-                HealthBar.UpdateText(closestNPC.fullName);
-                HealthBar.Show();
-            }
-            else if (CurrentNPC != null)
-            {
-                // Check if NPC has required components (S1API custom NPCs might not have all components)
-                if (CurrentNPC.Health == null)
-                    return;
-                    
-                float currentHealth = CurrentNPC.Health.Health;
-                float displayedHealth = HealthBar.GetCurrentHealth();
-                bool update = displayedHealth != currentHealth;
-                
-                if (update)
+                NPC npc = kvp.Key;
+                WorldSpaceHealthBar healthBar = kvp.Value;
+
+                // Remove if NPC is null, destroyed, or out of range
+                if (npc == null || npc.transform == null || !npcsInRange.Contains(npc))
                 {
-                    ModLogger.Debug($"NPC health changed from {displayedHealth} to {currentHealth}");
-                    HealthBar.SetCurrentHealth(currentHealth);
-                    HealthBar.UpdateText(CurrentNPC.fullName);
-                    HealthBar.Show();
+                    toRemove.Add(npc);
+                    if (healthBar != null)
+                        healthBar.Destroy();
                 }
             }
-            
-            if (HealthBar != null)
+
+            // Clean up removed healthbars
+            foreach (NPC npc in toRemove)
             {
-                HealthBar.Update();
+                HealthBars.Remove(npc);
             }
         }
 
         /// <summary>
-        /// Unloads the NPC healthbar manager, clearing references and resetting initialization state.
+        /// Unloads the NPC healthbar manager, destroying all healthbars and clearing references.
         /// </summary>
         public static void Unload()
         {
+            CleanupAllHealthbars();
             IsInitialized = false;
-            HealthBar = null;
+            HealthBars = null;
+        }
+
+        /// <summary>
+        /// Destroys all active healthbars.
+        /// </summary>
+        private static void CleanupAllHealthbars()
+        {
+            if (HealthBars == null)
+                return;
+
+            foreach (var kvp in HealthBars)
+            {
+                if (kvp.Value != null)
+                    kvp.Value.Destroy();
+            }
+
+            HealthBars.Clear();
         }
         /// <summary>
         /// Returns whether the NPC healthbar manager has been initialized.

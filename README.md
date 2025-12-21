@@ -1,12 +1,12 @@
-# Simple Health Bar - V1.3.0 BETA 
+# Simple Health Bar - V1.5.0
 [![Get it on GitHub](https://gist.githubusercontent.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/github_source.svg)](https://github.com/SirTidez/SimpleHealthBar)
 
 ---
 
-A lightweight mod that adds a clean, easy-to-read health bar above your inventory in **Schedule I**. Keep track of your player’s health at a glance. No more guessing and checking! Now also includes a health bar for the NPC nearest you!
+A lightweight mod that adds a clean, easy-to-read health bar above your inventory in **Schedule I**. Keep track of your player’s health at a glance. No more guessing and checking! Now features world-space healthbars above NPCs' heads!
 
 ---
-Beta version now features Multiplayer Health Bars and supports Il2Cpp and Mono versions of the game!
+Version 1.5.0 introduces world-space NPC healthbars that appear above each NPC's head, with support for displaying multiple NPCs simultaneously. Also features Multiplayer Health Bars and supports both Il2Cpp and Mono versions of the game!
 
 ![Health Bar Preview](https://i.imgur.com/fUTUDkO.jpeg)
 
@@ -20,14 +20,16 @@ Beta version now features Multiplayer Health Bars and supports Il2Cpp and Mono v
 - **Auto-Hide & Persistent Modes**  
   Choose to have the bar fade out after a few seconds of full health, or keep it visible at all times.
 
-- **NPC Health Display**  
-  Now the NPC nearest to you will have their health displayed at the top of your screen. Keep it around all the time, or have it disappear after a few seconds. It’s all configurable!
+- **World-Space NPC Healthbars**  
+  Healthbars now appear directly above each NPC's head in the game world! See health information for all NPCs within a configurable radius (default 50m). Healthbars automatically fade out when NPCs are dead, knocked out, or inside buildings. Fully configurable scale, position, and display radius.
+
+- **Multiplayer Health Bars**  
+  In multiplayer sessions, health bars for other players are displayed on the right side of your screen, stacked vertically. Each bar shows the player's name and current health, automatically updating as players join or leave the session.
 
 - **Easy Configuration**  
   Bar display duration, time, and speed via a simple config file. More coming in a future update.
 
 - **Future Enhancements (WIP)**  
-  - Multiplayer health bars*  
   - Customizable thresholds and warnings  
   - User-suggested features – drop your ideas in the discussion!
 
@@ -67,10 +69,16 @@ FadeDelay = 10.0
 FadeSpeed = 5.0
 
 [SimpleHealthBar_NPCHealthBar]
-# Enables the health bar for the nearest NPC
+# Enables the health bar for NPCs
 NPCBarEnabled = true
-# Enables fading out the health bar for the nearest NPC
+# Enables fading out the health bar for NPCs
 FadeOutNPCBar = false
+# Maximum distance from player to display NPC health bars (in meters)
+NPCWorldSpaceRadius = 50.0
+# Vertical offset above NPC transform for health bar position (in meters)
+NPCHeadOffset = 2.0
+# Multiplier for NPC health bar size (base scale: 0.005). Use simple values like 0.5, 1.0, 1.5, etc.
+NPCHealthBarScale = 1.0
 ```
 
 After editing, save the file and restart Schedule I for changes to take effect.
